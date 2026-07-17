@@ -14,7 +14,7 @@ import { useElementSize } from '../hooks/useElementSize.js';
 import { useGeoData } from '../hooks/useGeoData.js';
 import { usePixelRatio } from '../hooks/usePixelRatio.js';
 import { useReducedMotion } from '../hooks/useReducedMotion.js';
-import { mergeDefined } from '../utils/merge.js';
+import { useStableConfig } from '../utils/stable.js';
 import { BaseMapCanvas } from './BaseMapCanvas.js';
 import { ThreatCanvas } from './ThreatCanvas.js';
 
@@ -69,29 +69,31 @@ export function ThreatMap<TMeta = unknown>(props: ThreatMapProps<TMeta>): JSX.El
 
   /* ------------------------------ configuration ----------------------------- */
 
-  // Every config is memoized on the caller's object identity. Consumers write
-  // inline object literals (`theme={{ ocean: '#000' }}`) as a matter of course,
-  // which would otherwise produce a new resolved config every render and
-  // invalidate the render effects on each one.
-  const theme = useMemo(() => {
-    const merged = mergeDefined(defaultTheme, props.theme);
+  // Configs resolve to references that change only when their *values* do — see
+  // useStableConfig. Keying on the caller's object identity instead would be
+  // useless for the way these props are almost always written (`theme={{...}}`
+  // inline), and would re-rasterize the base map on every render of any
+  // component that re-renders — which a streaming feed does constantly.
+  const themeOverrides = useMemo(() => {
     // severityColors is the one nested object, so a partial override of it must
     // not wipe the sibling severities the consumer did not mention.
-    return props.theme?.severityColors
-      ? { ...merged, severityColors: { ...defaultTheme.severityColors, ...props.theme.severityColors } }
-      : merged;
+    if (!props.theme?.severityColors) return props.theme;
+    return { ...props.theme, severityColors: { ...defaultTheme.severityColors, ...props.theme.severityColors } };
   }, [props.theme]);
 
-  const line = useMemo(() => mergeDefined(defaultLineStyle, props.line), [props.line]);
-  const regions = useMemo(() => mergeDefined(defaultRegions, props.regions), [props.regions]);
+  const theme = useStableConfig(defaultTheme, themeOverrides);
+  const line = useStableConfig(defaultLineStyle, props.line);
+  const regions = useStableConfig(defaultRegions, props.regions);
 
   const reducedMotion = useReducedMotion();
-  const animation = useMemo(() => {
-    const merged = mergeDefined(defaultAnimation, props.animation);
-    // Someone who has asked their OS for less motion should not be handed a
-    // screen of racing lines. The arcs still render; they just hold still.
-    return merged.respectReducedMotion && reducedMotion ? { ...merged, enabled: false } : merged;
-  }, [props.animation, reducedMotion]);
+  const baseAnimation = useStableConfig(defaultAnimation, props.animation);
+  const animation = useMemo(
+    () =>
+      // Someone who has asked their OS for less motion should not be handed a
+      // screen of racing lines. The arcs still render; they just hold still.
+      baseAnimation.respectReducedMotion && reducedMotion ? { ...baseAnimation, enabled: false } : baseAnimation,
+    [baseAnimation, reducedMotion],
+  );
 
   /* -------------------------------- sizing --------------------------------- */
 
