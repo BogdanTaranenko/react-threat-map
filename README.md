@@ -8,6 +8,8 @@ Animated cyberattack threats on a static world map, for React. Aggregates attack
 origin region — with **US states as first-class origins** — so a busy feed reads as a
 map instead of a hairball.
 
+**[→ Live demo](https://bogdantaranenko.github.io/react-threat-map/)**
+
 ```tsx
 import { ThreatMap } from 'react-threat-map';
 
@@ -598,9 +600,14 @@ Alongside it:
 
 ## Examples
 
-A runnable Vite demo covering basic usage, 500+ streaming attacks with a live FPS counter,
-one country under fire from five origins at different volumes, aggregation strategies side
-by side, custom theming with render hooks, and raw-coordinate reverse geocoding with hover:
+**[bogdantaranenko.github.io/react-threat-map](https://bogdantaranenko.github.io/react-threat-map/)** —
+the demo below, hosted. Deployed from `main` on every push.
+
+It covers basic usage, 500+ streaming attacks with a live FPS counter, one country under
+fire from five origins at different volumes, aggregation strategies side by side, custom
+theming with render hooks, and raw-coordinate reverse geocoding with hover.
+
+To run it locally against the library source, so edits hot-reload:
 
 ```bash
 git clone https://github.com/BogdanTaranenko/react-threat-map
