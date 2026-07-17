@@ -9,7 +9,7 @@
 import type { Attack, RegionCode, Severity } from 'react-threat-map';
 
 /** Origins weighted by how much traffic they emit, roughly mirroring a real feed. */
-const ORIGINS: Array<{ region: string; weight: number }> = [
+const ORIGINS: Array<{ region: RegionCode; weight: number }> = [
   { region: 'CN', weight: 22 },
   { region: 'RU', weight: 18 },
   { region: 'US-CA', weight: 14 },
@@ -27,7 +27,7 @@ const ORIGINS: Array<{ region: string; weight: number }> = [
   { region: 'ID', weight: 2 },
 ];
 
-const TARGETS = ['US-CA', 'US-NY', 'US-TX', 'US-VA', 'GB', 'DE', 'JP', 'FR', 'AU', 'SG', 'CA'];
+const TARGETS: readonly RegionCode[] = ['US-CA', 'US-NY', 'US-TX', 'US-VA', 'GB', 'DE', 'JP', 'FR', 'AU', 'SG', 'CA'];
 
 const TYPES = ['ssh-bruteforce', 'ddos', 'phishing', 'sql-injection', 'port-scan', 'malware-c2', 'credential-stuffing'];
 

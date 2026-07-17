@@ -272,6 +272,20 @@ const TARGET = 'GH';
 const TARGET_COLOR = '#f97316';
 
 /**
+ * The one source of severity colours for this demo.
+ *
+ * The map is given it explicitly and the legend reads it, so the swatches cannot
+ * disagree with the lines. Reading `defaultTheme` in the legend while the map
+ * used its own theme would look identical today and silently start lying the
+ * moment anyone themed this map — and a legend that lies is worse than none.
+ *
+ * Note this is hoisted for *single-sourcing*, not for referential stability:
+ * `theme`/`line`/`regions`/`aggregation` are compared by value, so writing them
+ * inline is free. Only the render hooks need hoisting — see {@link highlightTarget}.
+ */
+const CAMPAIGN_THEME: Partial<ThreatMapTheme> = { severityColors: defaultTheme.severityColors };
+
+/**
  * Repaint the target country and leave every other region to the built-in
  * renderer.
  *
@@ -330,11 +344,16 @@ export function TargetedDemo(): JSX.Element {
 />`}
     >
       <div style={{ position: 'relative' }}>
-        <ThreatMap attacks={attacks} renderRegion={highlightTarget} line={{ curvature: 0.28 }} />
+        <ThreatMap attacks={attacks} renderRegion={highlightTarget} theme={CAMPAIGN_THEME} line={{ curvature: 0.28 }} />
         <ul className="legend">
           {GHANA_CAMPAIGN.map((origin) => (
             <li key={origin.region}>
-              <span className="legend-dot" style={{ background: defaultTheme.severityColors[origin.severity] }} />
+              {/*
+                The same colours the map was handed. Each origin's attacks all
+                share one severity, so the aggregate's severity — the max across
+                its members — is that severity, and the swatch matches the line.
+              */}
+              <span className="legend-dot" style={{ background: CAMPAIGN_THEME.severityColors?.[origin.severity] }} />
               {origin.name}
               <span className="legend-count">{origin.count}</span>
             </li>
