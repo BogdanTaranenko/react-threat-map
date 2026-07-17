@@ -88,3 +88,7 @@ git push --follow-tags
 
 Then publish a GitHub Release for the tag; CI publishes to npm with provenance. This needs
 an `NPM_TOKEN` repo secret.
+
+The workflow refuses to publish if the tag and `package.json` version disagree — npm never
+lets a version be reused, so that mistake would be permanent. It also skips publishing if
+the version is already on the registry, so re-running a release is safe.

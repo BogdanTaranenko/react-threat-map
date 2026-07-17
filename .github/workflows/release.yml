@@ -67,12 +67,30 @@ jobs:
           fi
           echo "Version $PKG matches tag $GITHUB_REF_NAME."
 
+      # npm rejects re-publishing an existing version, so this step would hard-fail
+      # the job in two legitimate cases: re-running a release whose publish
+      # actually succeeded, and cutting a Release for a version that was published
+      # by hand (which is how 0.1.0 shipped). Neither is an error worth a red X.
+      #
+      # This does not mask a forgotten version bump — the tag-vs-package.json check
+      # above already catches that, and it runs first.
+      - name: Check whether this version is already on npm
+        id: published
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "react-threat-map@$VERSION" version > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::react-threat-map@$VERSION is already on npm; skipping publish."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish (dry run)
         if: github.event_name == 'workflow_dispatch'
         run: npm publish --dry-run --provenance --access public
 
       - name: Publish
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && steps.published.outputs.exists == 'false'
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
