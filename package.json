@@ -1,0 +1,91 @@
+{
+  "name": "react-threat-map",
+  "version": "0.1.0",
+  "description": "A React component that renders animated cyberattack threats on a static world map, with intelligent per-region aggregation and first-class US state support.",
+  "keywords": [
+    "react",
+    "threat-map",
+    "cyberattack",
+    "attack-map",
+    "world-map",
+    "canvas",
+    "d3-geo",
+    "visualization",
+    "security",
+    "soc"
+  ],
+  "license": "MIT",
+  "author": "Bogdan Taranenko <bogdan13taranenko@gmail.com> (https://github.com/BogdanTaranenko)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BogdanTaranenko/react-threat-map.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BogdanTaranenko/react-threat-map/issues"
+  },
+  "homepage": "https://github.com/BogdanTaranenko/react-threat-map#readme",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./geo": {
+      "types": "./dist/geo.d.ts",
+      "import": "./dist/geo.js",
+      "require": "./dist/geo.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "DECISIONS.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "geo": "node scripts/build-geo.mjs",
+    "build": "npm run geo && tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test",
+    "example": "npm --prefix examples/demo run dev"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "dependencies": {
+    "d3-geo": "^3.1.1",
+    "topojson-client": "^3.1.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.1.0",
+    "@types/d3-geo": "^3.1.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/topojson-client": "^3.1.5",
+    "@vitest/coverage-v8": "^2.1.8",
+    "iso-3166": "^4.4.0",
+    "jsdom": "^25.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "us-atlas": "^3.0.1",
+    "vitest": "^2.1.8",
+    "world-atlas": "^2.0.2"
+  }
+}

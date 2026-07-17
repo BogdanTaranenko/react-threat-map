@@ -1,0 +1,10 @@
+# `files` in package.json is the allowlist; this is a backstop for anything
+# that slips past it.
+src/
+tests/
+scripts/
+examples/
+coverage/
+.playwright-mcp/
+*.config.ts
+tsconfig.json

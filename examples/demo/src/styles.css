@@ -1,0 +1,193 @@
+:root {
+  --bg: #05070f;
+  --panel: #0b1020;
+  --border: #1c2540;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #22d3ee;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.55;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 5rem;
+}
+
+.site-head {
+  margin-bottom: 3rem;
+}
+
+.site-head h1 {
+  margin: 0 0 0.5rem;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.site-head p,
+.panel-head p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 68ch;
+}
+
+.panel {
+  margin-bottom: 3.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.panel-head h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+/*
+ * The map fills this frame. ThreatMap ships no CSS and imposes no size — it
+ * simply fills whatever box you give it, which is what this demonstrates.
+ */
+.map-frame {
+  position: relative;
+  padding: 0.5rem;
+}
+
+.code {
+  margin: 0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: #070b16;
+  color: #94a3b8;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.btn {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #111a30;
+  color: var(--text);
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+}
+
+.btn-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04121a;
+  font-weight: 600;
+}
+
+.segmented {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.fps {
+  position: absolute;
+  z-index: 2;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.legend {
+  position: absolute;
+  z-index: 2;
+  bottom: 1rem;
+  left: 1rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(5, 7, 15, 0.75);
+  font-size: 0.78rem;
+  pointer-events: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1.7;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* Counts sit in their own column so the volumes compare at a glance. */
+.legend-count {
+  margin-left: auto;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  font-family: ui-monospace, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 3;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(5, 7, 15, 0.95);
+  font-size: 0.78rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.tooltip div {
+  color: var(--muted);
+}
+
+.site-foot {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.site-foot a {
+  color: var(--accent);
+}

@@ -1,0 +1,78 @@
+name: Release
+
+# Publishes to npm when a GitHub Release is published.
+#
+# Setup required before the first release:
+#   1. Create an npm automation token: npmjs.com -> Access Tokens -> Granular/Automation
+#   2. Add it as a repo secret named NPM_TOKEN
+#      (Settings -> Secrets and variables -> Actions -> New repository secret)
+#
+# To cut a release:
+#   npm version patch|minor|major   # bumps package.json, commits, tags
+#   git push --follow-tags
+#   Then publish a GitHub Release for that tag.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Pack and verify without publishing'
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for npm provenance, which cryptographically links the published
+      # tarball to this workflow run and commit. Free supply-chain credibility
+      # for an OSS package, and it shows as a verified badge on npm.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - run: npm ci
+
+      # `prepublishOnly` already runs build + test, but running them here means a
+      # failure stops the job before npm is ever contacted, rather than midway.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # A tag that disagrees with package.json publishes the wrong version under
+      # the right name — silently, and unfixably, since npm forbids re-publishing
+      # a version. Check before touching the registry.
+      - name: Verify tag matches package.json version
+        if: github.event_name == 'release'
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME implies version $TAG but package.json says $PKG."
+            exit 1
+          fi
+          echo "Version $PKG matches tag $GITHUB_REF_NAME."
+
+      - name: Publish (dry run)
+        if: github.event_name == 'workflow_dispatch'
+        run: npm publish --dry-run --provenance --access public
+
+      - name: Publish
+        if: github.event_name == 'release'
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

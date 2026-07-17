@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+examples/demo/dist/
+*.tgz
+
+# Test output
+coverage/
+
+# Tooling
+*.tsbuildinfo
+.playwright-mcp/
+
+# Editors — machine-specific, not project config
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
