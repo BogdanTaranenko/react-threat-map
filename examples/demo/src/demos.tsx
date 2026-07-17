@@ -205,7 +205,30 @@ export function AggregationDemo(): JSX.Element {
 export function CoordinatesDemo(): JSX.Element {
   const attacks = useMemo(() => makeCoordinateAttacks(240), []);
   const [hovered, setHovered] = useState<Threat | null>(null);
-  const position = useRef({ x: 0, y: 0 });
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Position the tooltip by writing a transform straight to the node.
+   *
+   * Two reasons it does not go through `onThreatHover` or through state:
+   *
+   * - `onThreatHover` fires only when the hovered threat *changes*, not on every
+   *   mousemove. Driving position from it pins the tooltip wherever the pointer
+   *   first touched a line, and it then sits still as you move along it.
+   * - Putting the cursor in state would re-render on every mouse pixel, which is
+   *   exactly what the library's fire-on-change hover contract exists to avoid.
+   *
+   * So: content comes from state (changes rarely), position is written directly
+   * (changes constantly, and needs no React involvement).
+   */
+  const handleMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    const tooltip = tooltipRef.current;
+    if (!tooltip) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left + 12;
+    const y = event.clientY - rect.top + 12;
+    tooltip.style.transform = `translate(${x}px, ${y}px)`;
+  };
 
   return (
     <Panel
@@ -216,25 +239,25 @@ export function CoordinatesDemo(): JSX.Element {
   onThreatHover={(threat) => setHovered(threat)}
 />`}
     >
-      <div style={{ position: 'relative' }}>
-        <ThreatMap
-          attacks={attacks}
-          regions={{ showStates: true }}
-          onThreatHover={(threat, event) => {
-            position.current = { x: event.offsetX, y: event.offsetY };
-            setHovered(threat);
-          }}
-        />
-        {hovered ? (
-          <div className="tooltip" style={{ left: position.current.x + 12, top: position.current.y + 12 }}>
-            <strong>
-              {hovered.fromRegion.name} → {hovered.toRegion.name}
-            </strong>
-            <div>
-              {hovered.count} attack{hovered.count === 1 ? '' : 's'} · {hovered.severity}
-            </div>
-          </div>
-        ) : null}
+      <div style={{ position: 'relative' }} onMouseMove={handleMove}>
+        <ThreatMap attacks={attacks} regions={{ showStates: true }} onThreatHover={(threat) => setHovered(threat)} />
+        {/*
+          Always mounted, only hidden — so `handleMove` always has a node to
+          position, and the tooltip never flashes at the origin for one frame on
+          first hover.
+        */}
+        <div ref={tooltipRef} className="tooltip" style={{ visibility: hovered ? 'visible' : 'hidden' }}>
+          {hovered ? (
+            <>
+              <strong>
+                {hovered.fromRegion.name} → {hovered.toRegion.name}
+              </strong>
+              <div>
+                {hovered.count} attack{hovered.count === 1 ? '' : 's'} · {hovered.severity}
+              </div>
+            </>
+          ) : null}
+        </div>
       </div>
     </Panel>
   );
@@ -278,9 +301,9 @@ const highlightTarget: RegionRenderer = (ctx, { feature, id, path }) => {
 /**
  * Five origins, five very different attack volumes, one target country.
  *
- * Two things are on display: aggregation turning 109 attacks into five lines
- * whose weight tracks their count, and `renderRegion` picking a single country
- * out of the base map.
+ * Two things are on display: aggregation turning every attack in
+ * {@link GHANA_CAMPAIGN} into one line per origin, weighted by that origin's
+ * count, and `renderRegion` picking a single country out of the base map.
  */
 export function TargetedDemo(): JSX.Element {
   const attacks = useMemo(() => makeCampaignAttacks(GHANA_CAMPAIGN, TARGET), []);

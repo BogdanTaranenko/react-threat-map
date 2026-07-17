@@ -169,6 +169,10 @@ main {
 .tooltip {
   position: absolute;
   z-index: 3;
+  /* Anchored at the origin; the cursor offset is applied as a transform in JS,
+     which keeps tooltip movement off React's render path entirely. */
+  top: 0;
+  left: 0;
   padding: 0.5rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 6px;

@@ -111,7 +111,7 @@ export function makeCampaignAttacks(origins: readonly CampaignOrigin[], target: 
       id: `campaign-${region}-${index}`,
       from: region,
       to: target,
-      type: TYPES[index % TYPES.length] as string,
+      type: TYPES[index % TYPES.length],
       severity,
     })),
   );
