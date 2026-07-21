@@ -247,24 +247,8 @@ Every runtime dependency, and why it earns its place:
 Both are declared `external`, so consumers dedupe them against their own copies of d3
 rather than shipping a second one.
 
-`react` is a **peer** dependency (>=16.14.0), never bundled.
-
-The floor is 16.14.0, not 16.8.0 (hooks) as one might expect: the compiled output uses
-the automatic JSX runtime, so it imports `react/jsx-runtime`, and that entry point first
-ships in **16.14.0**. On 16.8–16.13 the package installs and then fails at bundle time on
-an unresolved module, so those versions must stay outside the range.
-
-Nothing in the library needs more than that floor — it uses only `useState`, `useEffect`,
-`useRef`, `useMemo`, and `useCallback`. The range was originally `>=18` for no recorded
-reason, which excluded working consumers on React 16.14/17; widened in 0.2.1 after
-verifying typecheck and a mount/re-render/unmount render pass on 16.14, 17, 18, and 19.
-
-Supporting that range is also why the public types import `CSSProperties`, `MouseEvent`,
-`ReactElement`, and `RefObject` **by name** from `react` rather than reaching through the
-`React` UMD global or the global `JSX` namespace. A bare `JSX.Element` in an emitted `.d.ts`
-resolves against whatever `@types/react` the consumer has — and `@types/react@19` removed
-the global `JSX` namespace, so it broke React 19 consumers compiling with
-`skipLibCheck: false`. Named type imports are identical across `@types/react` 16 to 19.
+`react` is a **peer** dependency, never bundled. The supported range and the reasoning
+behind its floor are in [§7](#7-react-version-support-1614-and-up).
 
 Deliberately **not** dependencies: no state manager, no styling library, no CSS-in-JS, no
 animation library, no `d3-selection`/`d3-zoom`/`d3-scale`. The library ships zero CSS —
@@ -346,3 +330,128 @@ lines — silently erase every self-directed threat on the map.
 Consumers upgrading from 0.1.x see new animated loops wherever their feed contains
 same-region attacks that previously rendered as static dots. This is why the change went
 out as a minor bump rather than a patch.
+
+---
+
+## 7. React version support: 16.14 and up
+
+**Chosen:** `peerDependencies: { react: ">=16.14.0" }`, covering React 16.14, 17, 18, and 19.
+
+### Why the floor is 16.14.0 and not 16.8.0
+
+16.8.0 is the obvious guess, since that is where hooks landed and hooks are all this library
+uses. It is wrong. The compiled output uses the **automatic JSX runtime**, so it imports
+`react/jsx-runtime`, and that entry point first ships in **16.14.0**.
+
+The failure mode is what makes this worth recording: on 16.8–16.13 the package *installs
+cleanly* and then fails at the consumer's bundler on an unresolved module. A range of
+`>=16.8.0` would be a promise that npm accepts and webpack rejects, which is the worst
+place for the error to surface. If the JSX transform is ever changed back to `classic`, the
+floor can drop to 16.8.0 — those two facts move together.
+
+### Why not the original `>=18.0.0`
+
+There was no recorded reason for it, and it was wrong in both directions: it excluded React
+16.14/17 consumers the library works fine on, and it *included* React 19, which was broken
+(below). Nothing here needs more than the floor — the library uses only `useState`,
+`useEffect`, `useRef`, `useMemo`, and `useCallback`.
+
+Widened in 0.2.1, as a patch: broadening a peer range cannot break an existing consumer.
+
+### Why the public types import from `react` by name
+
+Supporting a wide range is why `CSSProperties`, `MouseEvent`, `ReactElement`, and
+`RefObject` are imported **by name** rather than reached through the `React` UMD global or
+the global `JSX` namespace.
+
+A bare `JSX.Element` in an emitted `.d.ts` resolves against whatever `@types/react` the
+consumer happens to have, which is not a thing this library controls. `@types/react@19`
+removed the global `JSX` namespace, so the 0.2.0 type surface failed for React 19 consumers
+compiling with `skipLibCheck: false`:
+
+```
+dist/index.d.ts(40,76): error TS2503: Cannot find namespace 'JSX'.
+```
+
+Those four names are exported identically by `@types/react` 16 through 19. The rule is
+enforced by `tests/react-compat.test.ts`, which rejects `React.*` and `JSX.*` in `src/`.
+
+### Tradeoff accepted
+
+**The test suite does not run against the floor.** `@testing-library/react@16` requires
+React 18+, so every test here executes on 18. Covering 16.14 properly means a second
+devDependency tree and a CI matrix, which was judged not worth it for a library using five
+hooks. A green suite is therefore *not* evidence that the floor works.
+
+What closes most of the gap is static: `tests/react-compat.test.ts` asserts that every name
+imported from `react` appears on an allowlist checked against 16.14 by hand, so reaching
+for `useSyncExternalStore`, `useId`, `useTransition`, `useDeferredValue`, or `use` fails the
+build rather than shipping. It cannot catch behavioural differences — only API existence.
+
+The one behavioural difference worth knowing: React 16/17 do not batch `setState` outside
+event handlers, so the `ResizeObserver`, `matchMedia`, and geo-load callbacks each trigger
+their own render there. Every one of those call sites issues a single `setState`, so the
+practical cost is nil — but a future hook that sets two pieces of state in one async
+callback would render twice on the floor and once on 18+.
+
+---
+
+## 8. Package entry points: per-condition types, plus a `typesVersions` fallback
+
+**Chosen:** `exports` declares types *inside* each of the `import` and `require`
+conditions, and `typesVersions` maps the `geo` subpath for resolvers that ignore `exports`
+entirely.
+
+This is not decoration. 0.2.1 shipped with two independent faults here, both invisible to
+every other check in the repo: the suite imports from `src/`, and the smoke test exercises
+one resolution mode. A package can be entirely correct at runtime and still fail to
+typecheck for a large share of its consumers.
+
+### `moduleResolution: "node"` ignores `exports`, so the subpath had no types
+
+Under node10 resolution — still the default for any project that has not opted in, which
+is disproportionately the React 16/17 projects the floor in §7 deliberately invites —
+`react-threat-map/geo` resolved to nothing:
+
+```
+error TS2307: Cannot find module 'react-threat-map/geo' or its corresponding type
+declarations. There are types at '.../dist/geo.d.ts', but this result could not be
+resolved under your current 'moduleResolution' setting.
+```
+
+`typesVersions` is the only mechanism node10 honours for subpath types, so it is the fix.
+
+The workaround a consumer reaches for first is a trap worth naming, because it *looks*
+like it works: `react-threat-map/dist/geo` typechecks fine, then fails at runtime with
+`ERR_PACKAGE_PATH_NOT_EXPORTED`, since the deep path is not in `exports`. Webpack 5
+enforces the same restriction. Neither specifier satisfied both the compiler and the
+bundler — which is why this needed fixing in the library rather than working around
+downstream.
+
+### One `types` per subpath made the package masquerade as ESM
+
+The map previously declared a single `"types": "./dist/index.d.ts"` covering both
+conditions. Because this package is `"type": "module"`, that `.d.ts` is read as an ES
+module — so a **CommonJS** consumer on `node16`/`nodenext` was told the types were ESM
+while the runtime correctly handed it `dist/index.cjs`:
+
+```
+error TS1479: The current file is a CommonJS module whose imports will produce 'require'
+calls; however, the referenced file is an ECMAScript module...
+```
+
+tsup was *already emitting* `dist/index.d.cts` and `dist/geo.d.cts`. The exports map simply
+never pointed at them, so they shipped in every tarball as dead weight. Declaring types
+per-condition is what makes the dual build actually dual.
+
+### Tradeoff accepted
+
+`typesVersions` is a legacy mechanism superseded by `exports`, and it duplicates the `geo`
+mapping in a second place. Adding a subpath therefore means editing both, and forgetting
+one breaks only node10 consumers — the group least likely to be on the maintainer's
+machine. It is kept because node10 offers no alternative, and dropping it would mean
+telling React 16/17 consumers to change their `tsconfig` to install a library that
+otherwise supports them.
+
+`npm run check:exports` (arethetypeswrong) runs in CI and covers every entry point against
+every resolution mode. It is what would have caught both faults before 0.2.1 went out.

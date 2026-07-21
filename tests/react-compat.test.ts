@@ -41,7 +41,7 @@ const ALLOWED_REACT_IMPORTS: ReadonlySet<string> = new Set([
   'useState',
   // Types. Imported by name rather than reached through the `React` UMD global, so the
   // emitted .d.ts does not depend on the consumer's ambient @types/react shape — see
-  // DECISIONS.md §4.
+  // DECISIONS.md §7.
   'CSSProperties',
   'MouseEvent',
   'ReactElement',
@@ -141,7 +141,7 @@ describe('React floor (peerDependencies: >=16.14.0)', () => {
   it('does not reach for the React UMD global or the global JSX namespace', () => {
     // These resolve against whatever @types/react the consumer has rather than an import
     // we control. @types/react@19 dropped the global JSX namespace, which broke React 19
-    // consumers compiling with skipLibCheck:false — see DECISIONS.md §4.
+    // consumers compiling with skipLibCheck:false — see DECISIONS.md §7.
     const offenders: string[] = [];
 
     for (const file of files) {

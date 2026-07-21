@@ -25,15 +25,24 @@ rebuild.
 ## The checks
 
 ```bash
-npm test           # unit tests
-npm run typecheck  # includes the type-contract suite — see below
+npm test                 # unit tests
+npm run typecheck        # includes the type-contract suite — see below
 npm run build
+npm run check:exports    # needs a build first; see below
 ```
 
-All three run in CI on Node 18, 20, and 22. `npm run typecheck` is **not** redundant with
+These run in CI on Node 18, 20, and 22. `npm run typecheck` is **not** redundant with
 `npm test`: `tests/types.test-d.tsx` asserts the shape of the public API, including
 `@ts-expect-error` cases that verify misuse *fails* to compile. Only `tsc` can check that;
 no runtime test can.
+
+`npm run check:exports` runs [arethetypeswrong](https://github.com/arethetypeswrong/arethetypeswrong.github.io)
+against a real `npm pack`, checking that every entry point resolves to the right module
+kind under every `moduleResolution` a consumer might use. Run it after any change to
+`exports`, `typesVersions`, `main`, `types`, or the tsup output layout. Nothing else here
+covers that surface — the suite imports from `src/`, so a package that is correct at
+runtime can still fail to typecheck for a large share of consumers. 0.2.1 shipped with two
+such faults; see [DECISIONS.md §8](./DECISIONS.md#8-package-entry-points-per-condition-types-plus-a-typesversions-fallback).
 
 ## Repo layout
 
