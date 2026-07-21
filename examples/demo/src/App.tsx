@@ -1,4 +1,12 @@
-import { AggregationDemo, BasicDemo, CoordinatesDemo, HeavyLoadDemo, TargetedDemo, ThemingDemo } from './demos';
+import {
+  AggregationDemo,
+  BasicDemo,
+  CoordinatesDemo,
+  DomesticDemo,
+  HeavyLoadDemo,
+  TargetedDemo,
+  ThemingDemo,
+} from './demos';
 
 export function App(): JSX.Element {
   return (
@@ -14,6 +22,7 @@ export function App(): JSX.Element {
       <BasicDemo />
       <HeavyLoadDemo />
       <TargetedDemo />
+      <DomesticDemo />
       <AggregationDemo />
       <ThemingDemo />
       <CoordinatesDemo />

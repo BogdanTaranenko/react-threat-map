@@ -6,7 +6,7 @@
  * mix of location formats.
  */
 
-import type { Attack, RegionCode, Severity } from 'react-threat-map';
+import type { Attack, AttackLocation, RegionCode, Severity } from 'react-threat-map';
 
 /** Origins weighted by how much traffic they emit, roughly mirroring a real feed. */
 const ORIGINS: Array<{ region: RegionCode; weight: number }> = [
@@ -111,6 +111,91 @@ export function makeCampaignAttacks(origins: readonly CampaignOrigin[], target: 
       id: `campaign-${region}-${index}`,
       from: region,
       to: target,
+      type: TYPES[index % TYPES.length],
+      severity,
+    })),
+  );
+}
+
+/* -------------------------------- domestic --------------------------------- */
+
+/** One flow inside a single country. */
+export interface DomesticFlow {
+  /** Stable key, since a location may be an object rather than a code. */
+  readonly id: string;
+  /** Which country view this flow belongs to. */
+  readonly scope: 'us' | 'de';
+  /** Origin. A region code, or coordinates for city-level precision. */
+  readonly from: AttackLocation;
+  /** Destination. */
+  readonly to: AttackLocation;
+  /** Display label, for the demo's legend. */
+  readonly label: string;
+  /** How many attacks travel this flow. */
+  readonly count: number;
+  /** Severity every attack on this flow carries. */
+  readonly severity: Severity;
+}
+
+/** Frankfurt, to the nearest street. Germany has no subdivisions in this library. */
+const FRANKFURT = { lat: 50.11, lng: 8.68, region: 'DE' } as const;
+
+/**
+ * Three attacks that start and end in the same city.
+ *
+ * The awkward case, and the reason it is here. Germany has no subdivision data,
+ * so `'DE' → 'DE'` would resolve both ends to one country anchor; giving explicit
+ * coordinates pins them to Frankfurt instead, but both ends are still *the same
+ * coordinate*. Either way the chord is zero, which is what `buildArc` now answers
+ * with a self-loop rather than an invisible point.
+ *
+ * Coordinates carry an explicit `region`, which is the cheap path: it skips the
+ * point-in-polygon walk and does not need boundary geometry to have loaded.
+ */
+export const DE_LOCAL: DomesticFlow = {
+  id: 'de-frankfurt-local',
+  scope: 'de',
+  from: FRANKFURT,
+  to: FRANKFURT,
+  label: 'Frankfurt → Frankfurt',
+  count: 3,
+  severity: 'critical',
+};
+
+/**
+ * Lateral movement inside one country: every origin and every destination is a
+ * US state, so no arc ever leaves American soil.
+ *
+ * The last entry is deliberately a *self-flow* — California to California. Both
+ * endpoints resolve to the same state anchor, so there is no chord and no
+ * direction of travel; `buildArc` renders it as a self-loop. It is the same case
+ * as {@link DE_LOCAL}, reached from the opposite direction: California has its
+ * own anchor and still collapses, because origin and destination are one region.
+ */
+export const US_LATERAL: readonly DomesticFlow[] = [
+  { id: 'us-ca-ny', scope: 'us', from: 'US-CA', to: 'US-NY', label: 'California → New York', count: 34, severity: 'critical' },
+  { id: 'us-tx-va', scope: 'us', from: 'US-TX', to: 'US-VA', label: 'Texas → Virginia', count: 21, severity: 'high' },
+  { id: 'us-wa-fl', scope: 'us', from: 'US-WA', to: 'US-FL', label: 'Washington → Florida', count: 13, severity: 'medium' },
+  { id: 'us-il-ga', scope: 'us', from: 'US-IL', to: 'US-GA', label: 'Illinois → Georgia', count: 8, severity: 'medium' },
+  { id: 'us-ny-va', scope: 'us', from: 'US-NY', to: 'US-VA', label: 'New York → Virginia', count: 5, severity: 'low' },
+  { id: 'us-ca-ca', scope: 'us', from: 'US-CA', to: 'US-CA', label: 'California → California', count: 11, severity: 'high' },
+];
+
+/** Every domestic flow the demo renders, in legend order. */
+export const DOMESTIC_FLOWS: readonly DomesticFlow[] = [DE_LOCAL, ...US_LATERAL];
+
+/**
+ * Expand domestic flows into the individual attacks behind them.
+ *
+ * Deterministic, like {@link makeCampaignAttacks}: the demo prints each flow's
+ * count in a legend, so the map has to be checkable against it.
+ */
+export function makeDomesticAttacks(flows: readonly DomesticFlow[]): Attack[] {
+  return flows.flatMap(({ id, from, to, count, severity }) =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `domestic-${id}-${index}`,
+      from,
+      to,
       type: TYPES[index % TYPES.length],
       severity,
     })),
