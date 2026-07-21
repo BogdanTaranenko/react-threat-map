@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, type ReactElement } from 'react';
 
 import type { Attack, ThreatMapError, ThreatMapProps, Threat } from '../types.js';
 import { defaultAnimation, defaultLineStyle, defaultRegions, defaultTheme } from '../config.js';
@@ -48,7 +48,7 @@ import { ThreatCanvas } from './ThreatCanvas.js';
  * />
  * ```
  */
-export function ThreatMap<TMeta = unknown>(props: ThreatMapProps<TMeta>): JSX.Element {
+export function ThreatMap<TMeta = unknown>(props: ThreatMapProps<TMeta>): ReactElement {
   const {
     attacks,
     width: widthProp,

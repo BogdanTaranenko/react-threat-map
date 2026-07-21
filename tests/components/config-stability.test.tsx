@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
 
 import { ThreatMap } from '../../src/components/ThreatMap.js';
 import type { Attack, GeoData } from '../../src/types.js';
@@ -87,7 +88,7 @@ afterEach(() => {
 });
 
 /** Re-render `count` times and report how many base-map redraws that caused. */
-function redrawsAcrossRerenders(element: (key: number) => JSX.Element, count = 5): number {
+function redrawsAcrossRerenders(element: (key: number) => ReactElement, count = 5): number {
   const { rerender } = render(element(0));
   const afterMount = baseMapDraws;
   for (let i = 1; i <= count; i++) rerender(element(i));

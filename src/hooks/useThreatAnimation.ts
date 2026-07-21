@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
 import type {
   AnimationConfig,
@@ -33,7 +33,7 @@ interface Entry<TMeta> {
 
 /** Inputs to {@link useThreatAnimation}. */
 export interface ThreatAnimationOptions<TMeta> {
-  readonly canvas: React.RefObject<HTMLCanvasElement | null>;
+  readonly canvas: RefObject<HTMLCanvasElement | null>;
   readonly threats: readonly Threat<TMeta>[];
   readonly projection: GeoProjectionLike | null;
   readonly width: number;

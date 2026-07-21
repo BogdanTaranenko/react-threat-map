@@ -7,6 +7,13 @@
  * @packageDocumentation
  */
 
+// Imported explicitly rather than reached through the `React` UMD global. The
+// global resolves against whatever `@types/react` the consumer happens to have,
+// which made the emitted .d.ts depend on an ambient shape we do not control —
+// and `@types/react@19` dropped the global `JSX` namespace entirely. These named
+// type exports are identical across @types/react 16 through 19.
+import type { CSSProperties } from 'react';
+
 /* -------------------------------------------------------------------------- */
 /*                                  Geography                                  */
 /* -------------------------------------------------------------------------- */
@@ -722,7 +729,7 @@ export interface ThreatMapProps<TMeta = unknown> {
   /** Applied to the wrapper element. */
   readonly className?: string;
   /** Applied to the wrapper element. The canvases fill it. */
-  readonly style?: React.CSSProperties;
+  readonly style?: CSSProperties;
   /** Accessible label for the map. Default `"Cyberattack threat map"`. */
   readonly ariaLabel?: string;
 }

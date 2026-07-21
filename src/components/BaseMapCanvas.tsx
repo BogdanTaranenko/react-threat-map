@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 
 import type {
   GeoData,
@@ -38,7 +38,7 @@ export interface BaseMapCanvasProps {
  *
  * @internal
  */
-export function BaseMapCanvas(props: BaseMapCanvasProps): JSX.Element {
+export function BaseMapCanvas(props: BaseMapCanvasProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { width, height, pixelRatio, projection, geo, theme, regions, renderRegion, weights, onError } = props;
 

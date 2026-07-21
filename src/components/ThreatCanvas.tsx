@@ -4,7 +4,10 @@
  * @packageDocumentation
  */
 
-import { useCallback, useRef } from 'react';
+// `MouseEvent` is aliased because the unqualified name is the DOM event, which
+// is what the public `onThreatClick`/`onThreatHover` signatures hand back via
+// `event.nativeEvent`. These handlers take the React synthetic one.
+import { useCallback, useRef, type MouseEvent as ReactMouseEvent, type ReactElement } from 'react';
 
 import type {
   AnimationConfig,
@@ -37,7 +40,7 @@ export interface ThreatCanvasProps<TMeta> {
  *
  * @internal
  */
-export function ThreatCanvas<TMeta>(props: ThreatCanvasProps<TMeta>): JSX.Element {
+export function ThreatCanvas<TMeta>(props: ThreatCanvasProps<TMeta>): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hovered = useRef<string | null>(null);
 
@@ -74,7 +77,7 @@ export function ThreatCanvas<TMeta>(props: ThreatCanvasProps<TMeta>): JSX.Elemen
 
   /** Map a pointer event to the threat under it, if any. */
   const pick = useCallback(
-    (event: React.MouseEvent<HTMLCanvasElement>): Threat<TMeta> | null => {
+    (event: ReactMouseEvent<HTMLCanvasElement>): Threat<TMeta> | null => {
       const canvas = canvasRef.current;
       if (!canvas) return null;
 
@@ -87,7 +90,7 @@ export function ThreatCanvas<TMeta>(props: ThreatCanvasProps<TMeta>): JSX.Elemen
   );
 
   const handleMove = useCallback(
-    (event: React.MouseEvent<HTMLCanvasElement>) => {
+    (event: ReactMouseEvent<HTMLCanvasElement>) => {
       if (!onThreatHover) return;
       const threat = pick(event);
       const id = threat?.id ?? null;
@@ -101,7 +104,7 @@ export function ThreatCanvas<TMeta>(props: ThreatCanvasProps<TMeta>): JSX.Elemen
   );
 
   const handleLeave = useCallback(
-    (event: React.MouseEvent<HTMLCanvasElement>) => {
+    (event: ReactMouseEvent<HTMLCanvasElement>) => {
       if (!onThreatHover || hovered.current === null) return;
       hovered.current = null;
       onThreatHover(null, event.nativeEvent);
@@ -110,7 +113,7 @@ export function ThreatCanvas<TMeta>(props: ThreatCanvasProps<TMeta>): JSX.Elemen
   );
 
   const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLCanvasElement>) => {
+    (event: ReactMouseEvent<HTMLCanvasElement>) => {
       if (!onThreatClick) return;
       const threat = pick(event);
       if (threat) onThreatClick(threat, event.nativeEvent);
