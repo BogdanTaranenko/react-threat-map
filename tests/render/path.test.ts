@@ -272,6 +272,89 @@ describe('pointAt', () => {
   });
 });
 
+describe('buildArc — self-loops', () => {
+  /** A viewport-sized lift ceiling, as `useThreatAnimation` passes (height / 3). */
+  const CEILING = 160;
+
+  const anchor = () => projection([PARIS.lng, PARIS.lat]) as [number, number];
+  const lastIndex = (arc: NonNullable<ReturnType<typeof buildArc>>) => arc.distances.length - 1;
+
+  it('gives a same-place threat real length to travel', () => {
+    const arc = buildArc(PARIS, PARIS, projection, 0.2, 48, CEILING)!;
+    // The whole point: a zero-length arc is skipped by `appendPolyline`, so
+    // without this the threat is invisible except for its head dot.
+    expect(arc.length).toBeGreaterThan(0);
+  });
+
+  it('anchors both ends of the loop on the shared point', () => {
+    const arc = buildArc(PARIS, PARIS, projection, 0.2, 48, CEILING)!;
+    const [ax, ay] = anchor();
+    const last = lastIndex(arc);
+
+    // Start: where the origin marker is drawn.
+    expect(arc.points[0]).toBeCloseTo(ax, 4);
+    expect(arc.points[1]).toBeCloseTo(ay, 4);
+    // End: where the impact ripple fires. A loop closes, so they coincide.
+    expect(arc.points[last * 2]).toBeCloseTo(ax, 4);
+    expect(arc.points[last * 2 + 1]).toBeCloseTo(ay, 4);
+  });
+
+  it('keeps every sample within a small radius of the anchor', () => {
+    const arc = buildArc(PARIS, PARIS, projection, 0.2, 48, CEILING)!;
+    const [ax, ay] = anchor();
+
+    for (let i = 0; i <= lastIndex(arc); i++) {
+      const distance = Math.hypot((arc.points[i * 2] as number) - ax, (arc.points[i * 2 + 1] as number) - ay);
+      // Two radii is the far side of the loop; the cap guards against a loop
+      // that scales away with the viewport and swamps the map.
+      expect(distance).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it('walks the head around the loop rather than pinning it in place', () => {
+    const arc = buildArc(PARIS, PARIS, projection, 0.2, 48, CEILING)!;
+    const quarter = at(arc, 0.25);
+    const threeQuarters = at(arc, 0.75);
+
+    expect(Math.hypot(quarter.x - threeQuarters.x, quarter.y - threeQuarters.y)).toBeGreaterThan(1);
+  });
+
+  it('scales the loop with the lift ceiling, between bounds', () => {
+    const tiny = buildArc(PARIS, PARIS, projection, 0.2, 48, 60)!;
+    const huge = buildArc(PARIS, PARIS, projection, 0.2, 48, 4000)!;
+
+    expect(huge.length).toBeGreaterThan(tiny.length);
+    // Both clamp, so neither collapses nor runs away.
+    expect(tiny.length).toBeGreaterThan(0);
+    expect(huge.length).toBeLessThan(200);
+  });
+
+  it('still produces a loop with no lift ceiling supplied', () => {
+    const arc = buildArc(PARIS, PARIS, projection, 0.2, 48)!;
+    expect(arc.length).toBeGreaterThan(0);
+  });
+
+  it('treats a sub-pixel separation as the same place', () => {
+    // ~0.001 px apart once projected: a real chord, but nothing anyone can see.
+    const nudged = { lat: PARIS.lat + 0.0005, lng: PARIS.lng };
+    const arc = buildArc(PARIS, nudged, projection, 0.2, 48, CEILING)!;
+
+    expect(arc.length).toBeGreaterThan(10);
+  });
+
+  it('leaves an ordinary two-place arc alone', () => {
+    const arc = buildArc(PARIS, NYC, projection, 0.2, 48, CEILING)!;
+    const [px, py] = projection([PARIS.lng, PARIS.lat]) as [number, number];
+    const [nx, ny] = projection([NYC.lng, NYC.lat]) as [number, number];
+    const last = lastIndex(arc);
+
+    expect(arc.points[0]).toBeCloseTo(px, 4);
+    expect(arc.points[1]).toBeCloseTo(py, 4);
+    expect(arc.points[last * 2]).toBeCloseTo(nx, 4);
+    expect(arc.points[last * 2 + 1]).toBeCloseTo(ny, 4);
+  });
+});
+
 describe('resolveEasing', () => {
   it('resolves every built-in name', () => {
     for (const name of Object.keys(easings) as (keyof typeof easings)[]) {

@@ -89,6 +89,11 @@ export function buildArc(
   const dx = endPx[0] - startPx[0];
   const dy = endPx[1] - startPx[1];
   const chord = Math.hypot(dx, dy);
+
+  // Both ends landed in the same place, so there is no direction to travel and
+  // no chord to lift off. Draw a loop instead — see {@link buildSelfLoop}.
+  if (chord <= SAME_PLACE_EPSILON) return buildSelfLoop(startPx, count, steps, maxLift);
+
   const nx = chord > 0 ? -dy / chord : 0;
   const ny = chord > 0 ? dx / chord : 0;
 
@@ -153,6 +158,80 @@ export function buildArc(
  * Anything past this is a wrap.
  */
 const ANTIMERIDIAN_JUMP = 180;
+
+/**
+ * Chord length, in pixels, at or below which two endpoints count as one place.
+ *
+ * Deliberately a hair above exact equality. Endpoints do not have to be *equal*
+ * to be indistinguishable — two hosts in the same city, or a country whose
+ * origin and destination both resolve to its single anchor, land sub-pixel apart
+ * once projected. A half-pixel chord cannot be seen, cannot be hovered, and
+ * cannot show a direction of travel, so it is more honest to draw it as a loop
+ * than as a line nobody can perceive.
+ */
+const SAME_PLACE_EPSILON = 0.5;
+
+/** Loop radius as a fraction of the lift ceiling, so it tracks map size. */
+const SELF_LOOP_LIFT_FRACTION = 0.06;
+
+/** Radius bounds in CSS pixels: below the first it vanishes, above it dominates. */
+const SELF_LOOP_MIN_RADIUS = 6;
+const SELF_LOOP_MAX_RADIUS = 18;
+
+/** Radius used when no lift ceiling was supplied, and so no map size is known. */
+const SELF_LOOP_DEFAULT_RADIUS = 10;
+
+/**
+ * Radius for a self-loop.
+ *
+ * Scales off `maxLift` (the viewport's lift ceiling, `height / 3`) so a loop is
+ * proportionate on a phone and on a SOC wall alike, then clamps hard at both
+ * ends. Note it does **not** scale with `curvature`: curvature is the height of
+ * a lift applied to a chord, and a self-loop has no chord to lift. Tying the two
+ * together would make `curvature: 0` — a perfectly reasonable choice for flat,
+ * straight lines — erase self-directed threats entirely.
+ */
+function selfLoopRadius(maxLift: number): number {
+  const derived = Number.isFinite(maxLift) ? maxLift * SELF_LOOP_LIFT_FRACTION : SELF_LOOP_DEFAULT_RADIUS;
+  return Math.min(SELF_LOOP_MAX_RADIUS, Math.max(SELF_LOOP_MIN_RADIUS, derived));
+}
+
+/**
+ * Geometry for a threat whose origin and destination are the same place.
+ *
+ * A circle sitting directly above the shared point and tangent to it, so the
+ * point itself stays the visual anchor: the origin marker sits on it, the head
+ * departs from it, travels the loop, and the impact ripple fires back on it.
+ * Start and end sample coincide, which is what closes the loop.
+ *
+ * This is built purely in screen space and skips `geoInterpolate` entirely —
+ * interpolating a great circle between a coordinate and itself yields that same
+ * coordinate for every `t`, which is precisely the degenerate buffer we are here
+ * to avoid.
+ */
+function buildSelfLoop(
+  center: [number, number],
+  count: number,
+  steps: number,
+  maxLift: number,
+): ArcGeometry {
+  const radius = selfLoopRadius(maxLift);
+  const points = new Float32Array(count * 2);
+
+  const cx = center[0];
+  const cy = center[1] - radius;
+
+  for (let i = 0; i < count; i++) {
+    // Starts at the bottom of the circle — the shared point — and comes back to
+    // it, so `t` runs once around.
+    const angle = (i / steps) * Math.PI * 2;
+    points[i * 2] = cx + Math.sin(angle) * radius;
+    points[i * 2 + 1] = cy + Math.cos(angle) * radius;
+  }
+
+  const { distances, length } = measure(points, count, -1);
+  return { points, breakAt: -1, distances, length };
+}
 
 function isFinitePoint(p: [number, number]): boolean {
   return Number.isFinite(p[0]) && Number.isFinite(p[1]);
