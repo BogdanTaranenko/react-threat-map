@@ -108,6 +108,17 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+      # Every entry point must resolve, with the right module kind, under every
+      # moduleResolution a consumer might use. Nothing else here checks this:
+      # the suite imports from src/, and the smoke test below runs on one
+      # resolution mode only, so a broken `exports` map is invisible to both.
+      #
+      # 0.2.1 shipped with two faults this catches — `./geo` unresolvable under
+      # node10, and both entries serving ESM types to CJS consumers. See
+      # DECISIONS.md §8.
+      - name: Types resolve under every moduleResolution
+        run: npm run check:exports
+
       # Guards the whole publish surface at once: that the tarball contains the
       # dist it should, and that a real consumer can import ESM, CJS, and the
       # ./geo subpath and get working code back.

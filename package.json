@@ -29,16 +29,33 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "geo": [
+        "./dist/geo.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./geo": {
-      "types": "./dist/geo.d.ts",
-      "import": "./dist/geo.js",
-      "require": "./dist/geo.cjs"
+      "import": {
+        "types": "./dist/geo.d.ts",
+        "default": "./dist/geo.js"
+      },
+      "require": {
+        "types": "./dist/geo.d.cts",
+        "default": "./dist/geo.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -56,6 +73,7 @@
     "build": "npm run geo && tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "check:exports": "attw --pack .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -71,6 +89,7 @@
     "topojson-client": "^3.1.0"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.1.0",
     "@types/d3-geo": "^3.1.0",
