@@ -49,11 +49,16 @@ import { ThreatMap } from 'react-threat-map';
 npm install react-threat-map
 ```
 
-React 18+ is a peer dependency:
+React is a peer dependency:
 
 ```json
-{ "peerDependencies": { "react": ">=18.0.0" } }
+{ "peerDependencies": { "react": ">=16.14.0" } }
 ```
+
+16.14.0 is the floor because that is the first release to ship `react/jsx-runtime`,
+which the compiled output imports. The library uses only `useState`, `useEffect`,
+`useRef`, `useMemo`, and `useCallback`, so nothing above that floor is required —
+React 16.14, 17, 18, and 19 are all supported.
 
 ---
 

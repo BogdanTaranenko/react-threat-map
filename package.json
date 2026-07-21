@@ -64,7 +64,7 @@
     "example": "npm --prefix examples/demo run dev"
   },
   "peerDependencies": {
-    "react": ">=18.0.0"
+    "react": ">=16.14.0"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",

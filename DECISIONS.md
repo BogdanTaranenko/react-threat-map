@@ -247,7 +247,24 @@ Every runtime dependency, and why it earns its place:
 Both are declared `external`, so consumers dedupe them against their own copies of d3
 rather than shipping a second one.
 
-`react` is a **peer** dependency (>=18), never bundled.
+`react` is a **peer** dependency (>=16.14.0), never bundled.
+
+The floor is 16.14.0, not 16.8.0 (hooks) as one might expect: the compiled output uses
+the automatic JSX runtime, so it imports `react/jsx-runtime`, and that entry point first
+ships in **16.14.0**. On 16.8–16.13 the package installs and then fails at bundle time on
+an unresolved module, so those versions must stay outside the range.
+
+Nothing in the library needs more than that floor — it uses only `useState`, `useEffect`,
+`useRef`, `useMemo`, and `useCallback`. The range was originally `>=18` for no recorded
+reason, which excluded working consumers on React 16.14/17; widened in 0.2.1 after
+verifying typecheck and a mount/re-render/unmount render pass on 16.14, 17, 18, and 19.
+
+Supporting that range is also why the public types import `CSSProperties`, `MouseEvent`,
+`ReactElement`, and `RefObject` **by name** from `react` rather than reaching through the
+`React` UMD global or the global `JSX` namespace. A bare `JSX.Element` in an emitted `.d.ts`
+resolves against whatever `@types/react` the consumer has — and `@types/react@19` removed
+the global `JSX` namespace, so it broke React 19 consumers compiling with
+`skipLibCheck: false`. Named type imports are identical across `@types/react` 16 to 19.
 
 Deliberately **not** dependencies: no state manager, no styling library, no CSS-in-JS, no
 animation library, no `d3-selection`/`d3-zoom`/`d3-scale`. The library ships zero CSS —

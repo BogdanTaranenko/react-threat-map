@@ -25,7 +25,7 @@ rebuild.
 ## The checks
 
 ```bash
-npm test           # 228 unit tests
+npm test           # unit tests
 npm run typecheck  # includes the type-contract suite — see below
 npm run build
 ```
@@ -46,7 +46,7 @@ no runtime test can.
 | `src/hooks/`, `src/components/` | The React layer. |
 | `scripts/build-geo.mjs` | Generates `src/geo/data/*.json` from Natural Earth. |
 
-## Two things that will bite you
+## Three things that will bite you
 
 **The geo data is generated *and* committed.** `src/geo/data/*.json` is produced by
 `scripts/build-geo.mjs` but checked in, so tests and consumers don't need ~4 MB of Natural
@@ -59,6 +59,22 @@ CI fails if the two disagree. Don't hand-edit the JSON.
 silently attributed their attacks to the wrong country. See
 [DECISIONS.md](./DECISIONS.md#3-geo-data-natural-earth-lazily-loaded-with-an-inline-centroid-table)
 before changing anything in that area.
+
+**The React floor is 16.14.0, and the test suite does not run against it.** `npm install`
+gives you React 18, and `@testing-library/react` needs 18+, so nothing here executes on the
+oldest version we claim to support. Do not read a green suite as "works on the floor".
+
+`tests/react-compat.test.ts` covers the part that *can* be checked statically: every name
+imported from `react` must be on an allowlist verified against 16.14 by hand. If you reach
+for `useSyncExternalStore`, `useId`, `useTransition`, `useDeferredValue`, or `use`, that
+test fails — not because the API is bad, but because it does not exist on the floor. The
+same test rejects `React.*` and `JSX.*`, which resolve against the consumer's ambient
+`@types/react` instead of an import we control.
+
+When it fails you have two honest options: avoid the API, or raise the floor in
+`package.json` and record why in DECISIONS.md. Do not just widen the allowlist to make the
+red go away — that is the one change that breaks consumers silently, because it breaks them
+at *their* build, not ours.
 
 ## Performance
 
