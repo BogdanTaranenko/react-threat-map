@@ -315,6 +315,35 @@ arcs render statically and the component costs nothing per frame. The map also r
 `prefers-reduced-motion` automatically; opt out with
 `animation={{ respectReducedMotion: false }}`.
 
+### Attacks that start and end in the same place
+
+An attack whose origin and destination resolve to the same point — a domestic incident in
+a country with no subdivisions, lateral movement inside one US state, two hosts in one
+city — has no chord to draw a line along:
+
+```tsx
+<ThreatMap
+  attacks={[
+    { id: '1', from: 'DE', to: 'DE', severity: 'high' },
+    { id: '2', from: 'US-CA', to: 'US-CA', severity: 'critical' },
+    { id: '3', from: { lat: 50.11, lng: 8.68 }, to: { lat: 50.11, lng: 8.68 } },
+  ]}
+/>
+```
+
+These render as a **self-loop**: a small circle tangent to the shared point, with the
+origin marker on the point, the head travelling the loop, and the impact ripple firing
+back on the same spot. It is hoverable like any other arc.
+
+The loop radius scales with the map and is clamped to 6–18 px, so a same-place attack
+stays visible on a world map instead of shrinking to nothing. It deliberately does **not**
+scale with `curvature`: curvature is the height of a lift applied to a chord, and a
+self-loop has no chord — tying them together would make `curvature: 0` erase these
+threats entirely.
+
+Endpoints do not have to be exactly equal. Anything projecting to within half a pixel
+counts as the same place, because a sub-pixel line cannot be seen or hovered anyway.
+
 ### Projections
 
 ```tsx
@@ -625,8 +654,9 @@ npm run dev
 
 [DECISIONS.md](./DECISIONS.md) covers the load-bearing choices and their tradeoffs:
 why `d3-geo` + Canvas over MapLibre/Leaflet/react-simple-maps, why Canvas 2D over SVG and
-WebGL, how the Natural Earth data is bundled and split, and why resolving and drawing
-deliberately use different datasets.
+WebGL, how the Natural Earth data is bundled and split, why resolving and drawing
+deliberately use different datasets, and why an attack that starts and ends in the same
+place is drawn as a loop rather than a point.
 
 ## Data
 

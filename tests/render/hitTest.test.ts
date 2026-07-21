@@ -73,9 +73,19 @@ describe('distanceToArcSquared', () => {
     expect(distance).toBe(Infinity);
   });
 
-  it('returns Infinity for a degenerate arc', () => {
+  it('misses a same-place loop from far away', () => {
     const geometry = arc(PARIS, PARIS);
     expect(distanceToArcSquared(geometry, 0, 0, HIT_TOLERANCE)).toBe(Infinity);
+  });
+
+  it('hits a same-place loop from on top of it', () => {
+    // A self-directed threat used to collapse to a zero-length arc, which had no
+    // segments to measure against and so could never be hovered. The loop gives
+    // it real geometry, and hover has to follow.
+    const geometry = arc(PARIS, PARIS);
+    const point = on(geometry, 0.5);
+
+    expect(distanceToArcSquared(geometry, point.x, point.y, HIT_TOLERANCE)).toBeLessThan(1);
   });
 });
 

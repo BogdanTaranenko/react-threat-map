@@ -273,3 +273,59 @@ one line per origin→destination region pair. Pure origin collapsing is availab
 containing one critical and forty low attacks renders critical. For a security display,
 under-reporting the worst thing in a bucket is the more dangerous failure mode. This is
 overridable via `aggregation.severity`.
+
+---
+
+## 6. Same-place threats render as a loop, not a point
+
+An attack can legitimately begin and end in the same place. Germany has no subdivisions in
+the region table, so a domestic German incident is `DE → DE` and both ends resolve to one
+country anchor. The same happens for `US-CA → US-CA`, and for two hosts given identical
+city coordinates.
+
+Geometrically this is a zero-length chord, and the arc builder's whole model — sample a
+geodesic, push each sample perpendicular to the chord by a sine-weighted lift — degenerates:
+there is no direction to travel and no perpendicular to lift along. Every sample lands on
+the same pixel.
+
+### What that used to look like
+
+Nothing, essentially. The renderer accumulates polylines and skips any arc of zero length,
+so a same-place threat drew no track and no trail. What remained was the origin dot, the
+head sitting on top of it, and the impact ripple firing in place. It also could not be
+hovered: hit-testing measures distance to line segments, and there were none.
+
+That is a defensible reading — the library has one coordinate for California, so it cannot
+draw a journey across it — but it is the wrong one for a threat map. A domestic incident is
+an event, and it disappeared into a dot indistinguishable from a static origin marker.
+
+### What it does instead
+
+`buildArc` detects the degenerate case and emits a circle tangent to the shared point: the
+origin marker sits on the point, the head travels the loop, and the ripple fires back on the
+point as it closes. It is ordinary geometry, so batching, fading, and hit-testing all work
+with no special cases downstream.
+
+Three parameter choices, all of which were the actual decisions:
+
+**The threshold is half a pixel, not exact equality.** Endpoints do not have to be *equal*
+to be indistinguishable. Two hosts in one city, or any pair on a far-zoomed view, project
+sub-pixel apart. A half-pixel line cannot be seen or hovered, so drawing it as a line is
+strictly worse than drawing it as a loop. The cost is that two genuinely distinct points
+can render as a loop when the viewport is zoomed far enough out.
+
+**The radius is clamped in pixels (6–18), scaled off the map's lift ceiling.** A radius
+derived from the geometry would be zero, and one derived from the viewport alone would
+vanish on a world map — which is exactly where a same-city attack most needs to stay
+visible.
+
+**The radius ignores `curvature`.** Tempting, since curvature controls arc height
+elsewhere. But curvature is the height of a lift applied to a chord, and a self-loop has no
+chord. Coupling them would make `curvature: 0` — a reasonable choice for flat, straight
+lines — silently erase every self-directed threat on the map.
+
+### Tradeoff accepted
+
+Consumers upgrading from 0.1.x see new animated loops wherever their feed contains
+same-region attacks that previously rendered as static dots. This is why the change went
+out as a minor bump rather than a patch.
