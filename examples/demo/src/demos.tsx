@@ -3,16 +3,26 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { geoAlbersUsa, geoMercator } from 'd3-geo';
 import {
   ThreatMap,
   defaultTheme,
   type Attack,
+  type GeoProjectionLike,
   type RegionRenderer,
   type Threat,
   type ThreatMapTheme,
 } from 'react-threat-map';
 
-import { GHANA_CAMPAIGN, makeAttacks, makeAttack, makeCampaignAttacks, makeCoordinateAttacks } from './feed';
+import {
+  DOMESTIC_FLOWS,
+  GHANA_CAMPAIGN,
+  makeAttacks,
+  makeAttack,
+  makeCampaignAttacks,
+  makeCoordinateAttacks,
+  makeDomesticAttacks,
+} from './feed';
 import { Fps } from './Fps';
 
 /* ------------------------------ 1. basic usage ----------------------------- */
@@ -358,6 +368,261 @@ export function TargetedDemo(): JSX.Element {
               <span className="legend-count">{origin.count}</span>
             </li>
           ))}
+        </ul>
+      </div>
+    </Panel>
+  );
+}
+
+/* ------------------------- 7. domestic (one country) ----------------------- */
+
+/**
+ * A US-only projection, built once.
+ *
+ * `geoAlbersUsa` is the reason this demo can zoom without any new library API:
+ * it is defined only over American territory, so the fit-to-sphere pass inside
+ * `createProjection` ends up framing the United States rather than the globe.
+ *
+ * Two consequences, both visible above:
+ *
+ * - **Distant geography disappears, nearby geography does not.** The projection
+ *   returns `null` for Mexico City, London, and Beijing, but southern Canada
+ *   falls inside the lower-48 cone's clip rectangle and projects normally — so
+ *   the Maritimes and Ontario still draw. The result is the US in context rather
+ *   than a hard cutout, which suits a domestic view fine, but it is worth knowing
+ *   it is not a US-only stencil.
+ * - **Any arc touching an unprojectable endpoint is dropped.** `buildArc` returns
+ *   `null` when either endpoint fails to project, so a `CN → US-CA` attack simply
+ *   would not render here. That is correct for a deliberately domestic feed, and
+ *   a trap if you point this projection at a mixed one.
+ *
+ * Hoisted to module scope because `projection` is a dependency of the base map's
+ * redraw effect — a fresh instance per render would re-rasterize every outline
+ * on every render. (`ThreatMap` compares config props by value, but a projection
+ * is an opaque function, so identity is all it has to go on.)
+ */
+const US_PROJECTION = geoAlbersUsa() as unknown as GeoProjectionLike;
+
+/**
+ * A box around Germany, with enough padding to keep its neighbours in frame.
+ *
+ * Given as the box's two opposite corners rather than as a `Polygon` ring, and
+ * that is not a stylistic choice. d3-geo interprets polygons **spherically**, so
+ * a ring's winding order decides which side of it is the inside. Wind the four
+ * corners the wrong way and `fitExtent` dutifully fits the entire globe *minus*
+ * Germany — no error, no warning, just a map zoomed the wrong way by a factor of
+ * twenty. A `MultiPoint` has no interior to get backwards; its bounds are simply
+ * its points.
+ */
+const GERMANY_EXTENT = {
+  type: 'MultiPoint',
+  coordinates: [
+    [4.5, 46.5],
+    [16.5, 56.0],
+  ],
+};
+
+/**
+ * A projection framed on Germany.
+ *
+ * Germany needs more work than the US because there is no `geoAlbersDeutschland`
+ * to lean on — a plain `geoMercator` is defined over the whole world, so passing
+ * one in gets it fitted to the globe like any other and the zoom is thrown away.
+ *
+ * Pre-scaling it at module scope does not work either: the library fits the
+ * projection to the *measured* viewport, which module scope cannot know, so a
+ * hard-coded `translate` would be wrong at every size but one.
+ *
+ * The way through is to keep `fitExtent` — so viewport sizing still works — and
+ * ignore the object the library asks us to fit. It passes `{type: 'Sphere'}`;
+ * we fit {@link GERMANY_EXTENT} to the same pixel box instead. The result scales
+ * correctly with the container and lands on Germany.
+ *
+ * The override goes on an instance we exclusively own rather than on a wrapper
+ * function. Wrapping looks tidier and is a trap: `geoPath` draws outlines through
+ * `projection.stream`, not by calling the projection, so a plain function that
+ * only forwards point projection throws on the first country it tries to draw.
+ * Overriding one method leaves the rest of d3's surface — `stream`, `invert`,
+ * `clipExtent` — untouched.
+ */
+const GERMANY_PROJECTION: GeoProjectionLike = (() => {
+  const projection = geoMercator();
+  const fitExtent = projection.fitExtent.bind(projection);
+
+  projection.fitExtent = (extent) => {
+    fitExtent(extent, GERMANY_EXTENT as never);
+    return projection;
+  };
+
+  return projection as unknown as GeoProjectionLike;
+})();
+
+/** The three ways to frame a domestic feed. */
+type DomesticScale = 'de' | 'us' | 'world';
+
+const SCALE_LABELS: Record<DomesticScale, string> = {
+  de: 'Germany',
+  us: 'United States',
+  world: 'World',
+};
+
+const PROJECTIONS: Record<DomesticScale, GeoProjectionLike | 'naturalEarth1'> = {
+  de: GERMANY_PROJECTION,
+  us: US_PROJECTION,
+  world: 'naturalEarth1',
+};
+
+const DESCRIPTIONS: Record<DomesticScale, (total: number) => React.ReactNode> = {
+  de: () => (
+    <>
+      Three attacks that start and end in the same city — Frankfurt to Frankfurt. Germany has no subdivisions in this
+      library, so there is no second anchor to travel to and the chord is exactly zero. Rather than drop to an
+      invisible point, the arc becomes a self-loop tangent to the city: the origin marker sits on Frankfurt, the head
+      runs the loop, and the impact ripple fires back on the same spot. Framed by handing the library a mercator whose
+      fitExtent ignores the sphere and fits a box around Germany instead.
+    </>
+  ),
+  us: () => (
+    <>
+      92 attacks between US states, aggregated into one arc per state pair, so the map reads as lateral movement rather
+      than an inbound campaign. Framed by passing geoAlbersUsa — no new props needed, since fitting a US-only
+      projection frames the US. Anything it cannot project drops out, which includes the Frankfurt flow; nearby Canada
+      still draws. California → California is the same self-loop case as Frankfurt, reached from the other direction.
+    </>
+  ),
+  world: (total) => (
+    <>
+      All {total} attacks at world scale, German and American together. The arcs are still correct, just short:
+      California → New York spans ~110 px against ~530 px for China → California. The Frankfurt self-loop holds its
+      size here — the loop radius is clamped in pixels rather than scaled from a chord, which is what keeps a
+      same-city attack visible on a world map instead of shrinking to nothing.
+    </>
+  ),
+};
+
+const CODE_SAMPLES: Record<DomesticScale, string> = {
+  de: `import { geoMercator } from 'd3-geo';
+
+// Two opposite corners, not a Polygon ring: d3-geo reads polygons spherically,
+// so the wrong winding order silently fits the globe minus Germany.
+const GERMANY_EXTENT = {
+  type: 'MultiPoint',
+  coordinates: [[4.5, 46.5], [16.5, 56.0]],
+};
+
+// Both ends are the same coordinate, so the arc is drawn as a self-loop.
+const attacks = [
+  { id: 'de-0', from: FRANKFURT, to: FRANKFURT, severity: 'critical' },
+  { id: 'de-1', from: FRANKFURT, to: FRANKFURT, severity: 'critical' },
+  { id: 'de-2', from: FRANKFURT, to: FRANKFURT, severity: 'critical' },
+];
+
+// Keep fitExtent so the library still sizes to the viewport, but fit a box
+// around Germany rather than the {type: 'Sphere'} it asks for. Override the
+// method rather than wrapping — geoPath draws through projection.stream.
+const projection = geoMercator();
+const fitExtent = projection.fitExtent.bind(projection);
+projection.fitExtent = (extent) => {
+  fitExtent(extent, GERMANY_EXTENT);
+  return projection;
+};
+
+<ThreatMap attacks={attacks} projection={projection} />`,
+  us: `import { geoAlbersUsa } from 'd3-geo';
+
+// Defined over US territory, so fitting frames the country, not the globe.
+// Endpoints it cannot project are dropped — keep the feed domestic.
+const projection = geoAlbersUsa();
+
+<ThreatMap
+  attacks={attacks}                        // every from/to is a 'US-XX' code
+  projection={projection}
+  regions={{ showStates: true, showSphere: false }}
+/>`,
+  world: `<ThreatMap
+  attacks={attacks}                        // German and US flows together
+  regions={{ showStates: true }}
+/>`,
+};
+
+/**
+ * Attacks whose origin *and* destination sit inside the same country.
+ *
+ * Worth its own demo because "one country at both ends" is not one behaviour but
+ * three, and the difference is entirely about how far apart the two endpoints
+ * resolve:
+ *
+ * 1. **Different subdivisions, world view.** `US-CA → US-NY` is a normal arc —
+ *    it just spans ~110 px instead of ~530 px. Nothing special happens; it is
+ *    only small. For a physically smaller country it is smaller still: Berlin to
+ *    Munich is ~13 px at world scale, which is why the country view exists.
+ * 2. **Different subdivisions, country view.** Swap in a projection that frames
+ *    one country and the same feed becomes the whole map. This needs no new
+ *    props — see {@link US_PROJECTION}.
+ * 3. **Identical endpoints.** The awkward one. `Frankfurt → Frankfurt` and
+ *    `US-CA → US-CA` both collapse to a single point: there is no chord, so
+ *    there is no direction to travel and nothing for a line to span. `buildArc`
+ *    answers this with a self-loop anchored on the point — see `buildSelfLoop`
+ *    in `src/render/path.ts`. Germany is the honest version of the case, because
+ *    it has no subdivisions here: `'DE' → 'DE'` has nowhere else to land, so a
+ *    self-directed flow is the *only* way to express a domestic German attack.
+ */
+export function DomesticDemo(): JSX.Element {
+  const [scale, setScale] = useState<DomesticScale>('de');
+  // One feed for all three views. Only the projection changes, so the world view
+  // shows the German and American flows side by side.
+  const attacks = useMemo(() => makeDomesticAttacks(DOMESTIC_FLOWS), []);
+  const total = DOMESTIC_FLOWS.reduce((sum, flow) => sum + flow.count, 0);
+
+  const isCountry = scale === 'us';
+
+  return (
+    <Panel
+      title="Domestic attacks — one country at both ends"
+      description={DESCRIPTIONS[scale](total)}
+      code={CODE_SAMPLES[scale]}
+      actions={
+        <div className="segmented">
+          {(['de', 'us', 'world'] as const).map((option) => (
+            <button
+              key={option}
+              className={`btn ${scale === option ? 'btn-active' : ''}`}
+              onClick={() => setScale(option)}
+            >
+              {SCALE_LABELS[option]}
+            </button>
+          ))}
+        </div>
+      }
+    >
+      <div style={{ position: 'relative' }}>
+        <ThreatMap
+          attacks={attacks}
+          projection={PROJECTIONS[scale]}
+          // `showSphere` fills the projected globe and leaves everything outside
+          // it transparent — right for a world projection, wrong for a zoomed
+          // one, where the sphere is either undefined (albersUsa) or far larger
+          // than the viewport (a fitted mercator). Falling back to a flat rect
+          // fill is what keeps a country view from rendering its ocean as a
+          // stray blob.
+          regions={{ showStates: true, showSphere: scale === 'world' }}
+          theme={CAMPAIGN_THEME}
+          line={{ curvature: 0.24 }}
+        />
+        <ul className="legend">
+          {DOMESTIC_FLOWS.map((flow) => {
+            // A view that cannot draw a flow should not claim it. albersUsa
+            // drops Frankfurt outright, and the German frame leaves the US
+            // arcs far off-canvas — either way the legend would be lying.
+            const drawn = scale === 'world' || flow.scope === scale;
+            return (
+              <li key={flow.id} style={{ opacity: drawn ? 1 : 0.35 }}>
+                <span className="legend-dot" style={{ background: CAMPAIGN_THEME.severityColors?.[flow.severity] }} />
+                {flow.label}
+                <span className="legend-count">{flow.count}</span>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </Panel>
