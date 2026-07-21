@@ -58,6 +58,21 @@ export function aspectRatioFor(spec: ProjectionSpec): number {
   return 1 / ratioFor(spec);
 }
 
+/**
+ * {@link aspectRatioFor} as a string, ready to drop into a React `style` object.
+ *
+ * The stringification is load-bearing, not cosmetic. React appends `px` to
+ * numeric style values unless the property sits on its unitless allowlist, and
+ * `aspectRatio` only joined that list in React 18. Handing React the raw number
+ * therefore emits `aspect-ratio: 2px` on 16.14 and 17 — invalid, so the browser
+ * drops the declaration, the wrapper collapses to zero height, and the map
+ * renders nothing at all. Strings are passed through untouched by every React
+ * version in the supported peer range.
+ */
+export function aspectRatioStyleFor(spec: ProjectionSpec): string {
+  return String(aspectRatioFor(spec));
+}
+
 /** The whole globe, as the GeoJSON object d3 uses for extent fitting. */
 const SPHERE = { type: 'Sphere' } as const;
 

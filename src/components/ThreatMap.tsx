@@ -9,7 +9,7 @@ import { useCallback, useMemo, useRef, type ReactElement } from 'react';
 import type { Attack, ThreatMapError, ThreatMapProps, Threat } from '../types.js';
 import { defaultAnimation, defaultLineStyle, defaultRegions, defaultTheme } from '../config.js';
 import { aggregateAttacks } from '../aggregation/aggregate.js';
-import { aspectRatioFor, createProjection, defaultHeightFor } from '../render/projection.js';
+import { aspectRatioStyleFor, createProjection, defaultHeightFor } from '../render/projection.js';
 import { useElementSize } from '../hooks/useElementSize.js';
 import { useGeoData } from '../hooks/useGeoData.js';
 import { usePixelRatio } from '../hooks/usePixelRatio.js';
@@ -180,8 +180,11 @@ export function ThreatMap<TMeta = unknown>(props: ThreatMapProps<TMeta>): ReactE
         // which gates off the canvases, which keeps it collapsed. `aspect-ratio`
         // is inert the moment anything else determines the height — a CSS class,
         // a flex parent, or the consumer's own `style` below — so it sets a
-        // floor without taking the decision away from them.
-        ...(heightProp !== undefined ? { height: heightProp } : { aspectRatio: aspectRatioFor(projectionProp) }),
+        // floor without taking the decision away from them. The value is a string
+        // for React 16.14/17's sake; see aspectRatioStyleFor.
+        ...(heightProp !== undefined
+          ? { height: heightProp }
+          : { aspectRatio: aspectRatioStyleFor(projectionProp) }),
         ...style,
       }}
       role="img"

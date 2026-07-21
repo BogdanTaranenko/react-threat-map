@@ -1,7 +1,7 @@
 import { geoOrthographic } from 'd3-geo';
 import { describe, expect, it } from 'vitest';
 
-import { createProjection, defaultHeightFor } from '../../src/render/projection.js';
+import { aspectRatioStyleFor, createProjection, defaultHeightFor } from '../../src/render/projection.js';
 import type { GeoProjectionLike, ProjectionName } from '../../src/types.js';
 
 const NAMES: ProjectionName[] = ['naturalEarth1', 'equirectangular', 'mercator', 'orthographic'];
@@ -101,5 +101,37 @@ describe('defaultHeightFor', () => {
   it('falls back to 2:1 for a custom projection instance', () => {
     const custom = geoOrthographic() as unknown as GeoProjectionLike;
     expect(defaultHeightFor(custom, 800)).toBe(400);
+  });
+});
+
+describe('aspectRatioStyleFor', () => {
+  /**
+   * Regression guard for a bug that made the map invisible on the whole 16.14/17
+   * half of the supported peer range: React appends `px` to numeric style values
+   * unless the property is on its unitless allowlist, and `aspectRatio` only
+   * joined that list in React 18. A number therefore emitted the invalid
+   * `aspect-ratio: 2px`, the browser dropped it, the wrapper collapsed to zero
+   * height, and its absolutely-positioned canvases rendered nothing.
+   *
+   * This suite runs on React 18, where a number would have worked — so the
+   * assertion is on the emitted *type*, which holds on every version. Asserting
+   * the rendered value instead would pass on 18 and still ship the bug.
+   */
+  it.each(NAMES)('emits %s as a string, so React never appends px', (name) => {
+    const value = aspectRatioStyleFor(name);
+
+    expect(typeof value).toBe('string');
+    expect(value).not.toMatch(/px$/);
+    expect(Number(value)).toBeGreaterThan(0);
+  });
+
+  it('emits a string for a custom projection instance too', () => {
+    const custom = geoOrthographic() as unknown as GeoProjectionLike;
+    expect(aspectRatioStyleFor(custom)).toBe('2');
+  });
+
+  it('agrees with defaultHeightFor: width / ratio is the derived height', () => {
+    expect(800 / Number(aspectRatioStyleFor('naturalEarth1'))).toBe(defaultHeightFor('naturalEarth1', 800));
+    expect(500 / Number(aspectRatioStyleFor('orthographic'))).toBe(defaultHeightFor('orthographic', 500));
   });
 });

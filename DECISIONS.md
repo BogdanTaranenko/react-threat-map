@@ -394,6 +394,28 @@ their own render there. Every one of those call sites issues a single `setState`
 practical cost is nil — but a future hook that sets two pieces of state in one async
 callback would render twice on the floor and once on 18+.
 
+### Known behavioural differences on the floor
+
+Each of these is invisible to a suite running on 18, so each carries a guard that fails on
+any version. Append to this list rather than fixing quietly — the entries are the only
+record of what the static allowlist cannot reach.
+
+**1. Numeric style values.** React appends `px` to numeric `style` values unless the property
+is on its unitless allowlist, and `aspectRatio` only joined that list in React 18. The
+wrapper's fallback ratio was emitted as a number, so on 16.14/17 it serialized to
+`aspect-ratio: 2px` — invalid, dropped by the browser, wrapper collapsed to zero height,
+absolutely-positioned canvases gated off, **map entirely invisible**. It affected every
+projection, not just custom ones, and the whole no-explicit-`height` default path.
+
+Found by a consumer on React 16.14, not by CI — precisely the gap this section predicted.
+Fixed by `aspectRatioStyleFor` in `src/render/projection.ts`, which stringifies deliberately;
+guarded by `tests/render/projection.test.ts`, which asserts the emitted **type** rather than
+the rendered value, since the rendered value is correct on 18 either way.
+
+The general rule this implies: **any numeric value handed to `style` must be checked against
+React 17's unitless allowlist, or stringified.** `lineHeight` and `flexGrow` are on that list
+and safe; `scale`, `translate`, `rotate` and `inset` are not.
+
 ---
 
 ## 8. Package entry points: per-condition types, plus a `typesVersions` fallback

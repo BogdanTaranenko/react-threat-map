@@ -149,6 +149,15 @@ describe('<ThreatMap>', () => {
       expect(container.querySelectorAll('canvas')).toHaveLength(0);
     });
 
+    it('falls back to an aspect-ratio box when no height is given', () => {
+      const { container } = render(<ThreatMap attacks={ATTACKS} />);
+      const wrapper = container.firstElementChild as HTMLElement;
+
+      // naturalEarth1 is 2:1, so the box is twice as wide as it is tall.
+      expect(wrapper.style.aspectRatio).toBe('2');
+      expect(wrapper.style.height).toBe('');
+    });
+
     it('applies consumer className and style to the wrapper', () => {
       const { container } = render(
         <ThreatMap attacks={ATTACKS} width={800} height={400} className="my-map" style={{ borderRadius: 8 }} />,
