@@ -1,6 +1,6 @@
 {
   "name": "react-threat-map",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A React component that renders animated cyberattack threats on a static world map, with intelligent per-region aggregation and first-class US state support.",
   "keywords": [
     "react",
