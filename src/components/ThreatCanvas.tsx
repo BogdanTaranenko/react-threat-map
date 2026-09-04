@@ -128,7 +128,9 @@ export function ThreatCanvas<TMeta>(props: ThreatCanvasProps<TMeta>): ReactEleme
       height={Math.max(1, Math.round(height * pixelRatio))}
       style={{
         position: 'absolute',
-        inset: 0,
+        // Longhand: the `inset` shorthand is Safari 14.1+.
+        top: 0,
+        left: 0,
         width: '100%',
         height: '100%',
         // Without handlers the canvas must not eat pointer events aimed at

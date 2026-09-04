@@ -64,7 +64,9 @@ export function BaseMapCanvas(props: BaseMapCanvasProps): ReactElement {
       ref={canvasRef}
       width={Math.max(1, Math.round(width * pixelRatio))}
       height={Math.max(1, Math.round(height * pixelRatio))}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+      // `inset` longhand: the shorthand is Safari 14.1+, and the canvases must
+      // still be pinned on anything older.
+      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
       aria-hidden="true"
     />
   );

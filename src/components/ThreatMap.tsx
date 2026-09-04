@@ -14,6 +14,7 @@ import { useElementSize } from '../hooks/useElementSize.js';
 import { useGeoData } from '../hooks/useGeoData.js';
 import { usePixelRatio } from '../hooks/usePixelRatio.js';
 import { useReducedMotion } from '../hooks/useReducedMotion.js';
+import { useSupportsAspectRatio } from '../hooks/useSupportsAspectRatio.js';
 import { useStableConfig } from '../utils/stable.js';
 import { BaseMapCanvas } from './BaseMapCanvas.js';
 import { ThreatCanvas } from './ThreatCanvas.js';
@@ -99,6 +100,7 @@ export function ThreatMap<TMeta = unknown>(props: ThreatMapProps<TMeta>): ReactE
 
   const measured = useElementSize(containerRef, widthProp === undefined || heightProp === undefined);
   const pixelRatio = usePixelRatio();
+  const supportsAspectRatio = useSupportsAspectRatio();
 
   const width = widthProp ?? measured?.width ?? 0;
   // Prefer what the container actually measures — that is what respects a
@@ -182,9 +184,20 @@ export function ThreatMap<TMeta = unknown>(props: ThreatMapProps<TMeta>): ReactE
         // a flex parent, or the consumer's own `style` below — so it sets a
         // floor without taking the decision away from them. The value is a string
         // for React 16.14/17's sake; see aspectRatioStyleFor.
+        //
+        // Where `aspect-ratio` is not implemented at all (Safari/iOS <15, Chrome
+        // <88, Firefox <89) the declaration is dropped and the wrapper collapses,
+        // so fall back to a `min-height` derived from the width. `min-height`
+        // rather than `height` keeps the "floor, not a decision" property, and
+        // deriving it from the *width* rather than the measured height is what
+        // stops it feeding back into its own measurement.
         ...(heightProp !== undefined
           ? { height: heightProp }
-          : { aspectRatio: aspectRatioStyleFor(projectionProp) }),
+          : supportsAspectRatio
+            ? { aspectRatio: aspectRatioStyleFor(projectionProp) }
+            : width > 0
+              ? { minHeight: defaultHeightFor(projectionProp, width) }
+              : {}),
         ...style,
       }}
       role="img"
