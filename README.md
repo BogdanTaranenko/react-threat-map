@@ -32,6 +32,7 @@ import { ThreatMap } from 'react-threat-map';
 ## Contents
 
 - [Install](#install)
+- [Browser support](#browser-support)
 - [Quick start](#quick-start)
 - [Aggregation](#aggregation)
 - [Customization](#customization)
@@ -59,6 +60,41 @@ React is a peer dependency:
 which the compiled output imports. The library uses only `useState`, `useEffect`,
 `useRef`, `useMemo`, and `useCallback`, so nothing above that floor is required —
 React 16.14, 17, 18, and 19 are all supported.
+
+---
+
+## Browser support
+
+| Browser | Minimum |
+| --- | --- |
+| Chrome / Edge | 88 |
+| Firefox | 89 |
+| Safari (macOS) | 15 |
+| Safari (iOS) | 15 |
+
+The floor is set by CSS [`aspect-ratio`][ar], which is how a `<ThreatMap>` given no
+height derives one — the canvases are absolutely positioned, so nothing else in the
+box has a height to contribute. Below that, the component falls back to a
+`min-height` computed from the measured width, so it still renders; the map just
+stops responding to a container whose height is set purely in CSS.
+
+Everything else the library touches is older than that floor: Canvas 2D with
+`Path2D` and the `lighter` composite operation, `ResizeObserver` (feature-detected,
+with a `getBoundingClientRect` fallback), and `matchMedia` (both the modern
+`addEventListener` and the `addListener` form Safari needed before 14). The
+published bundle is ES2020 and ships no polyfills.
+
+Two things degrade quietly rather than breaking, both on Safari below 16:
+
+- The `resolution` media feature is missing, so the canvas is not re-sharpened when
+  a window moves to a display with a different pixel ratio. The ratio picked at
+  mount stays.
+- `prefers-reduced-motion` still works — that query has been supported since Safari
+  10.1.
+
+There is no IE11 support and none is planned; `Path2D` alone rules it out.
+
+[ar]: https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio
 
 ---
 
