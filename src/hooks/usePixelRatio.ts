@@ -34,8 +34,10 @@ export function usePixelRatio(): number {
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
 
-    let query: MediaQueryList;
+    let unlisten: (() => void) | undefined;
+
     const update = () => {
+      unlisten?.();
       setRatio(currentRatio());
       listen();
     };
@@ -43,12 +45,27 @@ export function usePixelRatio(): number {
     // The query matches one exact ratio, so it must be rebuilt after each
     // change to watch for the next one.
     const listen = () => {
-      query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-      query.addEventListener('change', update, { once: true });
+      // Safari did not support the `resolution` media feature until 16, so this
+      // query never matches there and the ratio simply stays at its mount value
+      // — correct until the window is dragged to a display with a different
+      // one, which is a sharpness nit rather than a break.
+      const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+
+      // Safari and iOS only made MediaQueryList an EventTarget in 14; see
+      // useReducedMotion. Both branches unsubscribe explicitly in `update`
+      // rather than relying on the `once` option, so they behave identically.
+      if (typeof query.addEventListener === 'function') {
+        query.addEventListener('change', update);
+        unlisten = () => query.removeEventListener('change', update);
+        return;
+      }
+
+      query.addListener(update);
+      unlisten = () => query.removeListener(update);
     };
 
     listen();
-    return () => query?.removeEventListener('change', update);
+    return () => unlisten?.();
   }, []);
 
   return ratio;

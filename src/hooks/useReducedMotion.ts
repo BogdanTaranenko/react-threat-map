@@ -30,8 +30,18 @@ export function useReducedMotion(): boolean {
     setReduced(query.matches);
 
     const update = (event: MediaQueryListEvent) => setReduced(event.matches);
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
+
+    // Safari and iOS only made MediaQueryList an EventTarget in 14; before that
+    // the deprecated addListener/removeListener pair is the only way to
+    // subscribe. Calling addEventListener unconditionally throws during mount
+    // and takes the consumer's tree down with it.
+    if (typeof query.addEventListener === 'function') {
+      query.addEventListener('change', update);
+      return () => query.removeEventListener('change', update);
+    }
+
+    query.addListener(update);
+    return () => query.removeListener(update);
   }, []);
 
   return reduced;
